@@ -12,3 +12,24 @@ Vim config:
 ```vim
 nmap <leader>x :silent exec "!echo \| nc -U /tmp/execod.sock"<cr>
 ```
+
+## Build
+
+1. Install dependencies:
+
+    ```bash
+    $ dep ensure
+    ```
+
+2. Compile:
+
+    ```bash
+    $ go build
+    ```
+
+3. Run:
+
+    ```bash
+    $ ./execod uptime
+    $ echo | nc -U /tmp/execod.sock
+    ```
