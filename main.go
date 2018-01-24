@@ -19,6 +19,8 @@ func main() {
 }
 
 func start() error {
+	log.SetLevel(log.DebugLevel)
+
 	// Command
 	if len(os.Args) < 2 {
 		return errors.New("usage: cmd [arg ...]")
@@ -43,14 +45,14 @@ func start() error {
 
 	for conn := range listen(ctx, ln) {
 		conn.Close()
-		log.Infof("received new request")
+		log.Debugf("received new request")
 
 		cmd := exec.Command(exe, args...)
 		cmd.Stdin = os.Stdin
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
 
-		log.WithField("cmd", cmd).Infof("running command")
+		log.Infof("running command")
 		t0 := time.Now()
 		err = cmd.Run()
 		if err != nil {
@@ -87,13 +89,14 @@ func listen(ctx context.Context, ln net.Listener) <-chan net.Conn {
 			conn, err := ln.Accept()
 			select {
 			case <-done:
-				log.Infof("listener closed")
+				log.Debugf("listener closed")
 				return
 			default:
 			}
 
 			if err != nil {
-				log.WithError(errors.Wrap(err, "Accept()")).Error("failed to accept conn")
+				err = errors.Wrap(err, "Accept()")
+				log.WithError(err).Error("failed to accept conn")
 				continue
 			}
 			conns <- conn
@@ -105,7 +108,7 @@ func listen(ctx context.Context, ln net.Listener) <-chan net.Conn {
 		<-ctx.Done()
 		log.WithError(ctx.Err()).Errorf("context error")
 		err := ln.Close()
-		log.WithError(err).Infof("closed listener")
+		log.WithError(err).Debugf("closed listener")
 	}()
 
 	return conns
