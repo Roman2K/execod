@@ -23,11 +23,6 @@ const defaultSock = "/tmp/execod.sock"
 func start() error {
 	log.SetLevel(log.DebugLevel)
 
-	sock := os.Getenv("EXECOD_SOCK")
-	if sock == "" {
-		sock = defaultSock
-	}
-
 	// Command
 	if len(os.Args) < 2 {
 		return errors.New("usage: cmd [arg ...]")
@@ -39,12 +34,21 @@ func start() error {
 	log.Infof("command: %q %q", exe, args)
 
 	// Listen
+	sock := os.Getenv("EXECOD_SOCK")
+	if sock == "" {
+		sock = defaultSock
+	}
 	ln, err := net.Listen("unix", sock)
 	if err != nil {
 		return errors.Wrap(err, "net.Listen()")
 	}
 	defer ln.Close()
 	log.WithField("addr", ln.Addr()).Infof("listening")
+
+	// Log verbosity
+	if os.Getenv("EXECOD_SILENT") != "" {
+		log.SetLevel(log.ErrorLevel)
+	}
 
 	// Clean stop on SIGINT
 	ctx, cancel := interruptContext()
