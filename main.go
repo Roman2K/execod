@@ -18,8 +18,15 @@ func main() {
 	}
 }
 
+const defaultSock = "/tmp/execod.sock"
+
 func start() error {
 	log.SetLevel(log.DebugLevel)
+
+	sock := os.Getenv("EXECOD_SOCK")
+	if sock == "" {
+		sock = defaultSock
+	}
 
 	// Command
 	if len(os.Args) < 2 {
@@ -32,7 +39,7 @@ func start() error {
 	log.Infof("command: %q %q", exe, args)
 
 	// Listen
-	ln, err := net.Listen("unix", "/tmp/execod.sock")
+	ln, err := net.Listen("unix", sock)
 	if err != nil {
 		return errors.Wrap(err, "net.Listen()")
 	}
@@ -77,10 +84,7 @@ func interruptContext() (ctx context.Context, cancel func()) {
 }
 
 func listen(ctx context.Context, ln net.Listener) <-chan net.Conn {
-	var (
-		conns = make(chan net.Conn)
-		done  = make(chan struct{})
-	)
+	conns := make(chan net.Conn)
 
 	go func() {
 		defer close(conns)
@@ -88,7 +92,7 @@ func listen(ctx context.Context, ln net.Listener) <-chan net.Conn {
 		for {
 			conn, err := ln.Accept()
 			select {
-			case <-done:
+			case <-ctx.Done():
 				log.Debugf("listener closed")
 				return
 			default:
@@ -104,7 +108,6 @@ func listen(ctx context.Context, ln net.Listener) <-chan net.Conn {
 	}()
 
 	go func() {
-		defer close(done)
 		<-ctx.Done()
 		log.WithError(ctx.Err()).Errorf("context error")
 		err := ln.Close()
